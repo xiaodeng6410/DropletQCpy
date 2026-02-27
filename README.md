@@ -12,9 +12,13 @@ https://link.springer.com/article/10.1186/s13059-021-02547-0
         
         
         
+        
+        
+        
+        
 
 The official implementation of DropletQC is provided as an R package:
-https://github.com/powellgenomicslab/DropletQC_paper
+[https://github.com/powellgenomicslab/DropletQC_paper](https://github.com/powellgenomicslab/DropletQC)
 
 The original software is designed for the R ecosystem and integrates with Bioconductor-based workflows. While this provides strong compatibility within R-based pipelines, it limits direct integration with Python-based single-cell analysis frameworks such as Scanpy and AnnData, which are widely used in the Python scientific computing ecosystem.
 
