@@ -35,6 +35,27 @@ This is a clean-room reimplementation based solely on the published methodology 
 
 If you use `dropletqcpy`, please cite the original DropletQC publication.
 
+⚠️ Development Status & Known Limitations
+🚧 Project Status: Work in Progress
+This tool is currently in the early development stage (Alpha/Beta). While core functionalities are operational, several modules are still undergoing iteration and optimization. We welcome community feedback, issue reports, and Pull Requests to help improve the project.
+🔍 Known Limitation: Broken Cell Detection
+Currently, this tool has not yet identified an optimal solution for detecting and filtering "broken cells" (low-quality cells or cell debris).
+The current algorithms for identifying low-quality cells or fragments may lack precision.
+Recommendation: We advise users to combine this tool with other specialized methods (e.g., DoubletFinder, Scrublet, or manual thresholding based on mitochondrial percentage) to effectively filter out broken cells during quality control.
+Improving this functionality is a top priority on our development roadmap.
+✨ Key Advantage:
+1.Empty Droplet Detection
+Despite the limitation above, this tool excels in Empty Droplet Detection:
+Superior Sensitivity: Compared to the R version of DropletQC, this Python implementation utilizes an improved statistical approach. It more accurately distinguishes the boundary between low-count real cells and empty droplets.
+Streamlined Workflow: Eliminating the need to switch between R and Python environments, this tool offers a smoother, automated pipeline. It enables users to remove background noise more efficiently and retain high-quality single-cell data with greater ease.
+Summary: If your primary goal is robust empty droplet removal and you seek a cleaner dataset than what current R-based solutions provide, this tool is an excellent choice. However, please note that additional steps will be required to filter out broken cells.
+2. Robust Performance on Single-Nucleus Data (snRNA-seq)
+This tool demonstrates consistent robustness when applied to single-nucleus RNA sequencing (snRNA-seq) datasets.
+Unlike some tools optimized strictly for whole-cell data, our algorithm effectively adapts to the unique count distributions of nuclei.
+It successfully identifies empty droplets in snRNA-seq experiments, ensuring high-quality input data for downstream nucleus-specific analyses.
+Summary: Whether working with single-cell (scRNA-seq) or single-nucleus (snRNA-seq) data, this tool is an excellent choice for robust empty droplet removal. However, please note that additional steps will be required to filter out broken cells or damaged nuclei.
+
+
 ```python
 import dropletqcpy as dp
 import pandas as pd
@@ -101,105 +122,6 @@ cluster
         min_nuclear_fraction=0.15,
     )
 ────────────────────────────────────────────────────────────────────────
-
-
-
-
-
-#展示一下分群
-import matplotlib.pyplot as plt
-import seaborn as sns
-plt.figure(figsize=(6,5))
-sns.scatterplot(
-    x=adata.obs["log1p_total_counts"],
-    y=adata.obs["nuclear_fraction"],
-    hue=adata.obs["gmm_cluster"],
-    palette="tab10",
-    s=3,
-    linewidth=0,
-    alpha=0.6
-)
-plt.xlabel("log1p_total_counts")
-plt.ylabel("nuclear_fraction")
-plt.title("GMM Clusters in QC Space")
-plt.legend(title="Cluster", bbox_to_anchor=(1.05,1), loc="upper left")
-plt.tight_layout()
-plt.savefig("QC_GMM_clusters_scRNA.png", dpi=300, bbox_inches="tight")
-plt.close()
-
-
-#测试一下loom方案
-#如果loom是用velocyto计算得到的数据，这些细胞是cellranger估算后得到的barcode，
-#这也导致细胞数目少于正常的原始数据，所以会出现NaN的情况，在计算前可以考虑删除掉这群细胞，
-#显然loom因为体积小比BAM更快，所以先计算loom的核质比，再把结果合并到adata里是个不错的选择，后续我们会优化BAM的运算速度。
-#对于loom的数据
-#将Bracde进行转换，去掉样本名前缀和末尾x，得到核心序列；
-#同时对adata的barcode也进行转换，去掉-1后缀，得到核心序列。这样就能保证两者的barcode能够正确匹配。
-adata = dp.compute_nuclear_fraction(
-    adata,
-    "/data_result/dengys/git/dropletqcpy/testdata/OES272835.loom",
-    barcode_transform=lambda bc: bc.split(":")[-1].rstrip("x"),
-    adata_barcode_transform=lambda bc: bc.rsplit("-", 1)[0],
-)
-adata = adata[~adata.obs["nuclear_fraction"].isna()].copy()
-adata = dp.identify_empty_droplets(adata)
-
-
-
-────────────────────────────────────────────────────────────────────────
-  dropletqcpy — identify_empty_droplets  |  GMM 2D Cluster Report
-────────────────────────────────────────────────────────────────────────
-
-Key parameters (adjust to tune classification):
-┌──────────────────────────────────────────────────────────┐
-│  n_components         = 2    (auto-detected)                │
-│  hard_filter_threshold= 1.0     (log10 units)               │
-│  min_total_counts     = 500       (raw UMI count)            │
-│  min_nuclear_fraction = 0.1                                │
-└──────────────────────────────────────────────────────────┘
-
-  Per-cluster statistics:
-
-           n_bins  mean_total_counts  median_total_counts  mean_log10_total_counts  mean_nuclear_fraction  median_nuclear_fraction  min_nuclear_fraction  max_nuclear_fraction  quality
-cluster                                                                                                                                                                                
-0            1926          1412.4964               1053.5                   3.0406                 0.5138                   0.5020                0.1292                0.7881   ✓  OK 
-1           15127          3727.7510               2579.0                   3.4408                 0.2784                   0.2809                0.0224                0.5072   ✓  OK 
-
-  ─ Removal summary ─────────────────────────────────────
-  Hard-filtered (log10_counts ≤ 1.0)  :        0 bins
-  Low-quality clusters (empty_droplet) :        0 bins  (0.0%)
-  Retained (cell)                      :   17,053 bins  (100.0%)
-  Total input                          :   17,053 bins
-  ────────────────────────────────────────────────────────
-
-  To adjust thresholds, rerun with e.g.:
-    identify_empty_droplets(adata,
-        n_components=2,       # set None for auto-detect
-        min_total_counts=1000,
-        min_nuclear_fraction=0.15,
-    )
-────────────────────────────────────────────────────────────────────────
-
-#展示一下分群
-import matplotlib.pyplot as plt
-import seaborn as sns
-plt.figure(figsize=(6,5))
-sns.scatterplot(
-    x=adata.obs["log1p_total_counts"],
-    y=adata.obs["nuclear_fraction"],
-    hue=adata.obs["gmm_cluster"],
-    palette="tab10",
-    s=3,
-    linewidth=0,
-    alpha=0.6
-)
-plt.xlabel("log1p_total_counts")
-plt.ylabel("nuclear_fraction")
-plt.title("GMM Clusters in QC Space")
-plt.legend(title="Cluster", bbox_to_anchor=(1.05,1), loc="upper left")
-plt.tight_layout()
-plt.savefig("QC_GMM_clusters_loom.png", dpi=300, bbox_inches="tight")
-plt.close()
 
 
 
